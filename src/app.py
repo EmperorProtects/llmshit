@@ -57,10 +57,20 @@ if "messages" not in st.session_state:
 
 st.title("🤖 Ollama RAG Chatbot")
 
+file = open("./constitution.txt", "r")
+# Read the entire content of the file
+content = file.read()
+collection.add(
+    ids=[str(uuid.uuid4())],
+    documents=[content],
+)
+st.success("Default document uploaded and indexed!")
+
 uploaded_file = st.file_uploader("Upload a document", type=["txt"])
 if uploaded_file:
     content = uploaded_file.read().decode()
     collection.add(
+        ids=[str(uuid.uuid4())],
         documents=[content],
     )
     st.success("Document uploaded and indexed!")
