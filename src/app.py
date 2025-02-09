@@ -20,7 +20,7 @@ class SearchResult:
 class RAGChatbot:
     def __init__(self, model_name: str = "mxbai-embed-large", persist_dir: str = "ollama"):
         self.embeddings = OllamaEmbeddings(
-            model="mxbai-embed-large",
+            model=model_name,
         )
         self.vector_store = Chroma(
             embedding_function=self.embeddings,
@@ -28,11 +28,15 @@ class RAGChatbot:
         )
         
         self.query_generation_template = """
-        Generate 3 different versions of the following question that capture different aspects of the query.
-        Format as a Python list.
-        Original question: {question}
-        """
-        
+         I use you to generate different variations of a given question to improve search results.
+         Provide me with just a list of the questions.
+         Generate 3 different versions of the following question that capture different aspects of the query.
+         Format response as a Python list like [question1, question2, question3]
+         Strictly follow the format, otherwise, the response will be incorrect.
+         whole your answer will be evaluated as python code.
+         Original question: {question}
+         """
+
         self.response_synthesis_template = """
         Synthesize these responses into a single coherent answer:
         Responses: {responses}
@@ -52,7 +56,7 @@ class RAGChatbot:
         
         Using the above context, provide a clear and accurate answer to the question.
         If the context doesn't contain enough information, say so.
-        
+       " 
         Answer:
         """
 
@@ -64,21 +68,38 @@ class RAGChatbot:
         chain = LLMChain(llm=llm, prompt=prompt)
         response = chain.run(question=question)
         print(response)
-    
-        try:
-            # Ensure the response is a valid Python list
-            if response.startswith('[') and response.endswith(']'):
-                variants = eval(response)
-            else:
-                raise ValueError("Response is not a valid Python list")
+        parts = response.split(':')
+
         
-            if not isinstance(variants, list):
-                variants = [question]
-            variants.append(question)
-            return list(set(variants))
-        except Exception as e:
-            st.warning(f"Error generating query variations: {e}")
-            return [question]
+        if len(parts) > 1:
+            # question = parts[0].strip()  # Part before the colon
+            answer = parts[1].strip()
+            answer = answer.split('=')
+            answer = answer[1].strip()
+            answer = answer.split(']')
+            answer = answer[0].strip()
+            answer = answer + ']'
+
+        print(answer)
+        variants = eval(answer)
+
+        return list(set(variants))
+        # try:
+        #     print("************************************************")
+        #     print(response)
+        #     # Ensure the response is a valid Python list
+        #     if response.startswith('[') and response.endswith(']'):
+        #         variants = eval(response)
+        #     else:
+        #         raise ValueError("Response is not a valid Python list")
+        #
+        #     if not isinstance(variants, list):
+        #         variants = [question]
+        #     variants.append(question)
+        #     return list(set(variants))
+        # except Exception as e:
+        #     st.warning(f"Error generating query variations: {e}")
+        #     return [question]
 
     def reciprocal_rank_fusion(
         self,
